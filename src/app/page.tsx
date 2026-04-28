@@ -1,65 +1,184 @@
-import Image from "next/image";
+import { getBooks } from "@/lib/actions/books";
+import { BookCard } from "@/components/book-card";
+import { BookListItem } from "@/components/book-list-item";
+import { LibraryFilters } from "@/components/library-filters";
+import { BookOpen, Plus } from "lucide-react";
+import Link from "next/link";
+import { Suspense } from "react";
 
-export default function Home() {
+interface PageProps {
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    type?: string;
+    sort?: string;
+    view?: string;
+    rating?: string;
+    tag?: string;
+    series?: string;
+  }>;
+}
+
+type BookWithRelations = Awaited<ReturnType<typeof getBooks>>[number];
+
+function groupBySeries(books: BookWithRelations[]) {
+  const seriesMap = new Map<
+    string,
+    { name: string; books: BookWithRelations[] }
+  >();
+  const standalone: BookWithRelations[] = [];
+
+  for (const book of books) {
+    if (book.seriesName) {
+      const key = book.seriesName.toLowerCase();
+      if (!seriesMap.has(key)) {
+        seriesMap.set(key, { name: book.seriesName, books: [] });
+      }
+      seriesMap.get(key)!.books.push(book);
+    } else {
+      standalone.push(book);
+    }
+  }
+
+  // Sort books within each series by seriesNumber
+  for (const group of seriesMap.values()) {
+    group.books.sort(
+      (a, b) => (a.seriesNumber ?? 999) - (b.seriesNumber ?? 999)
+    );
+  }
+
+  // Sort series alphabetically
+  const sorted = Array.from(seriesMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  return { series: sorted, standalone };
+}
+
+export default async function LibraryPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const books = await getBooks({
+    search: params.q,
+    status: params.status,
+    type: params.type,
+    sort: params.sort,
+    rating: params.rating ? parseInt(params.rating) : undefined,
+    tagIds: params.tag ? [params.tag] : undefined,
+    series: params.series,
+  });
+
+  // When filtering by series, sort by book number
+  if (params.series) {
+    books.sort(
+      (a, b) => (a.seriesNumber ?? 999) - (b.seriesNumber ?? 999)
+    );
+  }
+
+  const view = params.view || "grid";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">
+            {params.series || "My Library"}
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+          {params.series && (
+            <Link
+              href="/"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              View all
+            </Link>
+          )}
+        </div>
+        <span className="text-sm text-muted-foreground">
+          {books.length} {books.length === 1 ? "book" : "books"}
+        </span>
+      </div>
+
+      <Suspense>
+        <LibraryFilters />
+      </Suspense>
+
+      {books.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <BookOpen className="h-16 w-16 text-muted-foreground/30 mb-4" />
+          <h2 className="text-lg font-medium text-muted-foreground mb-2">
+            {params.q || params.status || params.type
+              ? "No books match your filters"
+              : "Your library is empty"}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            {params.q || params.status || params.type
+              ? "Try adjusting your search or filters"
+              : "Start by adding your first book"}
           </p>
+          {!params.q && !params.status && !params.type && (
+            <Link
+              href="/add"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Add your first book
+            </Link>
+          )}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      ) : view === "series" ? (
+        (() => {
+          const { series, standalone } = groupBySeries(books);
+          return (
+            <div className="space-y-8">
+              {series.map((group) => (
+                <section key={group.name}>
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <h2 className="text-lg font-semibold">{group.name}</h2>
+                    <span className="text-xs text-muted-foreground">
+                      {group.books.length}{" "}
+                      {group.books.length === 1 ? "book" : "books"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {group.books.map((book) => (
+                      <BookCard key={book.id} book={book} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+              {standalone.length > 0 && (
+                <section>
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <h2 className="text-lg font-semibold text-muted-foreground">
+                      Standalone
+                    </h2>
+                    <span className="text-xs text-muted-foreground">
+                      {standalone.length}{" "}
+                      {standalone.length === 1 ? "book" : "books"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {standalone.map((book) => (
+                      <BookCard key={book.id} book={book} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          );
+        })()
+      ) : view === "list" ? (
+        <div className="space-y-2">
+          {books.map((book) => (
+            <BookListItem key={book.id} book={book} />
+          ))}
         </div>
-      </main>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {books.map((book) => (
+            <BookCard key={book.id} book={book} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

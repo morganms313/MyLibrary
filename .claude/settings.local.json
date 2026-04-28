@@ -5,7 +5,14 @@
       "Bash(export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\")",
       "Bash(npx create-next-app@latest /tmp/mylibrary-init --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --turbopack)",
       "Bash(npx prisma:*)",
-      "Bash(npx shadcn@latest init -d)"
+      "Bash(npx shadcn@latest init -d)",
+      "Bash(npx shadcn@latest add card input label select textarea badge dialog dropdown-menu tabs separator command popover calendar form toast sheet toggle-group tooltip alert-dialog -y)",
+      "Bash(npx shadcn@latest add card input label select textarea badge dialog dropdown-menu tabs separator command popover calendar form sonner sheet toggle-group tooltip alert-dialog -y)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(npx next:*)",
+      "Bash(ls node_modules/next/dist/server/require-hook*)",
+      "Bash(node node_modules/next/dist/bin/next build)"
     ]
   }
 }
