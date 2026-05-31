@@ -2,10 +2,12 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import path from "path";
 
-const dbPath = path.join(process.cwd(), "dev.db");
+// Use DATABASE_URL when set (e.g. in the container it points at the mounted
+// /data volume); fall back to a local dev.db so local development is unchanged.
+const url = process.env.DATABASE_URL ?? `file:${path.join(process.cwd(), "dev.db")}`;
 
 function createPrismaClient() {
-  const adapter = new PrismaLibSql({ url: `file:${dbPath}` });
+  const adapter = new PrismaLibSql({ url });
   return new PrismaClient({ adapter });
 }
 
