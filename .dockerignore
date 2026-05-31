@@ -1,0 +1,14 @@
+# Keep the build context small and keep secrets out of image layers.
+# (.env files stay on disk on the host — compose injects them at runtime.)
+node_modules
+.next
+.git
+.gitignore
+npm-debug.log*
+.DS_Store
+Dockerfile
+.dockerignore
+README*
+.env
+.env.*
+!.env.example
